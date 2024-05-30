@@ -1,0 +1,4 @@
+rasterio
+fiona
+shapely
+numpy
