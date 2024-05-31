@@ -139,8 +139,8 @@ if __name__ == "__main__":
     input_dir = "data"
     input_admin = "data/adm0_3857.fgb"
 
-    # years = range(2012, 2020)
-    years = [2019]
+    years = range(2012, 2020)
+    # years = [2019]
 
     for year in years:
         output_dir = f"output/{year}"
@@ -154,5 +154,5 @@ if __name__ == "__main__":
         merge_countries(
             input_dir=output_dir,
             output_path=f"output/Electricity_access_{year}.tif",
-            delete_country=False
+            delete_country=True
         )
