@@ -161,7 +161,15 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-/output
+output/2012
+output/2013
+output/2014
+output/2015
+output/2016
+output/2017
+output/2018
+output/2019
+
 /data/adm0*.fgb
 Pipfile*
 .DS_Store

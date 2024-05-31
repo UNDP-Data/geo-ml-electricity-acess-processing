@@ -50,7 +50,8 @@ def split_countries(admin_data, mlea_data, output_dir):
                      "width": out_image.shape[2],
                      "transform": out_transform,
                      "nodata": nodata_value,
-                     # "dtype": 'int16'
+                     "dtype": 'int16',
+                     "compress": "deflate"
                      })
 
                 original_filename = mlea_data.split("/")[1].replace(".tif", "")
@@ -62,48 +63,59 @@ def split_countries(admin_data, mlea_data, output_dir):
                 print(f'Saved {output_path}')
 
 
-def merge_countries(input_dir, output_path):
+def merge_countries(input_dir, output_path, delete_country=False):
     tiff_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.tif')]
 
-    # 入力ファイルを開いて、データとメタデータを読み込む
     src_files_to_mosaic = []
     for tiff_file in tiff_files:
         src = rasterio.open(tiff_file)
         src_files_to_mosaic.append(src)
 
-    # マージ処理を実行
     mosaic, out_trans = merge(src_files_to_mosaic, resampling=Resampling.nearest)
 
-    # メタデータを更新
     out_meta = src.meta.copy()
     out_meta.update({"driver": "GTiff",
                      "height": mosaic.shape[1],
                      "width": mosaic.shape[2],
                      "transform": out_trans,
                      "nodata": src.nodata,
-                     "dtype": 'int16'
+                     "dtype": 'int16',
+                     "compress": "deflate",
+                     "TILED": "YES",
+                     "BIGTIFF": "IF_SAFER",
+                     "BLOCKXSIZE": 512,
+                     "BLOCKYSIZE": 512
                      })
 
-    # 出力ファイルにマージ結果を書き込む
     with rasterio.open(output_path, "w", **out_meta) as dest:
         dest.write(mosaic)
     print(f'Merged TIFF file saved at: {output_path}')
 
+    if delete_country:
+        for tiff in tiff_files:
+            os.remove(tiff)
+        shutil.rmtree(input_dir)
+
 
 if __name__ == "__main__":
 
-    output_dir = "output/2019"
     input_dir = "data"
     input_admin = "data/adm0_3857.fgb"
-    year = "2019"
 
-    split_countries(
-        admin_data=input_admin,
-        mlea_data=f"{input_dir}/Electricity_access_{year}.tif",
-        output_dir=output_dir
-    )
+    # years = range(2012, 2020)
+    years = [2018]
 
-    merge_countries(
-        input_dir=output_dir,
-        output_path=f"{output_dir}/Electricity_access_{year}.tif"
-    )
+    for year in years:
+        output_dir = f"output/{year}"
+
+        split_countries(
+            admin_data=input_admin,
+            mlea_data=f"{input_dir}/Electricity_access_{year}.tif",
+            output_dir=output_dir
+        )
+
+        merge_countries(
+            input_dir=output_dir,
+            output_path=f"output/Electricity_access_{year}.tif",
+            delete_country=True
+        )
