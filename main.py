@@ -9,9 +9,46 @@ from shapely.geometry import shape, box
 import numpy as np
 
 
+def remove_outliers(data, threshold=3):
+    """
+    Remove outliers from a dataset using Z-score method.
+
+    The function calculates the Z-scores for each data point in the dataset.
+    Z-score is a measure of how many standard deviations a data point is from the mean.
+    Data points with a high Z-score (positive or negative) are considered outliers.
+
+    Z-score formula:
+        Z = (X - mean) / standard_deviation
+
+    Where:
+        Z - Z-score
+        X - Data point
+        mean - Mean of the dataset
+        standard_deviation - Standard deviation of the dataset
+
+    Parameters:
+    data (array-like): The input data from which to remove outliers.
+    threshold (float): The Z-score threshold to identify outliers. Default is 3.
+
+    Returns:
+    array-like: The data with outliers removed.
+    ”””
+    :param data:
+    :param threshold:
+    :return:
+    """
+    z_scores = np.abs((data - np.mean(data)) / np.std(data))
+    return data[z_scores < threshold]
+
+
 def rescale(data):
-    min_val = np.min(data)
-    max_val = np.max(data)
+    data_cleaned = remove_outliers(data)
+    if len(data_cleaned) == 0:
+        return np.zeros_like(data_cleaned)
+    min_val = np.min(data_cleaned)
+    max_val = np.max(data_cleaned)
+    if max_val == min_val:
+        return np.zeros_like(data)
     return (data - min_val) / (max_val - min_val) * 100
 
 
@@ -103,7 +140,7 @@ if __name__ == "__main__":
     input_admin = "data/adm0_3857.fgb"
 
     # years = range(2012, 2020)
-    years = [2018]
+    years = [2019]
 
     for year in years:
         output_dir = f"output/{year}"
@@ -117,5 +154,5 @@ if __name__ == "__main__":
         merge_countries(
             input_dir=output_dir,
             output_path=f"output/Electricity_access_{year}.tif",
-            delete_country=True
+            delete_country=False
         )
