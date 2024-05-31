@@ -36,3 +36,7 @@ pipenv run python main.py
 It will create rescaled MLEA data under output folder. The new dataset is rescaled 0-100 instead of current 0-255.
 
 But the problem of normalization is still there. Each country has different scaled values, this causes the weird looks of data. Also, the admin 0 boundaries are not exactly matching original MLEA data's country boundary. So, the data after merging will looks a bit different particularly for the near country boundaries.
+
+## Methodology to create original MLEA data
+
+see [Electricity Mapping.pdf](./Electricity%20Mapping.pdf) for the methodologies how original MLEA data was created.
