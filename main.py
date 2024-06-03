@@ -7,7 +7,7 @@ import shutil
 import fiona
 from shapely.geometry import shape, box
 import numpy as np
-
+import pandas as pd
 
 def remove_outliers(data, threshold=3):
     """
@@ -38,9 +38,9 @@ def remove_outliers(data, threshold=3):
     :return:
     """
     z_scores = np.abs((data - np.mean(data)) / np.std(data))
-    filtered_data = data.copy()
-    filtered_data[z_scores < threshold] = 0
-    return filtered_data
+    filtered = data.copy()
+    filtered[z_scores < threshold] = 0
+    return filtered
 
 
 def rescale(data):
@@ -60,6 +60,8 @@ def split_countries(admin_data, mlea_data, output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
+    stats = {}
+
     with fiona.open(admin_data, "r") as adm0:
         with rasterio.open(mlea_data) as raster:
             nodata_value = raster.nodata
@@ -67,6 +69,7 @@ def split_countries(admin_data, mlea_data, output_dir):
 
             for feature in adm0:
                 country_iso3 = feature['properties']['GID_0']
+                country_name = feature['properties']['NAME_0']
                 geometry = feature['geometry']
                 shape_geometry = shape(geometry)
                 # buffered_geometry = shape_geometry.buffer(10)
@@ -80,6 +83,15 @@ def split_countries(admin_data, mlea_data, output_dir):
                 if np.all(out_image == nodata_value):
                     print(f'Skipping {country_iso3} as it is entirely No Data')
                     continue
+
+                country_stats = {
+                    'name': country_name,
+                    'min': np.nanmin(out_image),
+                    'max': np.nanmax(out_image),
+                    'mean': np.nanmean(out_image),
+                    'std': np.nanstd(out_image),
+                }
+                stats[country_iso3] = country_stats
 
                 out_image = rescale(out_image)
 
@@ -101,6 +113,11 @@ def split_countries(admin_data, mlea_data, output_dir):
                     dest.write(out_image)
 
                 print(f'Saved {output_path}')
+
+    # Print all statistics
+    stats_df = pd.DataFrame.from_dict(stats, orient='index')
+    stats_df = stats_df.sort_index()
+    print(stats_df.to_string())
 
 
 def merge_countries(input_dir, output_path, delete_country=False):
@@ -142,8 +159,8 @@ if __name__ == "__main__":
     input_dir = "data"
     input_admin = "data/adm0_3857.fgb"
 
-    years = range(2012, 2020)
-    # years = [2019]
+    # years = range(2012, 2020)
+    years = [2019]
 
     for year in years:
         output_dir = f"output/{year}"
