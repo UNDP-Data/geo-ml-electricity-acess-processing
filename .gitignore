@@ -174,3 +174,4 @@ output/2019
 Pipfile*
 .DS_Store
 .idea/
+*.aux.xml
