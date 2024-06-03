@@ -38,18 +38,21 @@ def remove_outliers(data, threshold=3):
     :return:
     """
     z_scores = np.abs((data - np.mean(data)) / np.std(data))
-    return data[z_scores < threshold]
+    filtered_data = data.copy()
+    filtered_data[z_scores < threshold] = 0
+    return filtered_data
 
 
 def rescale(data):
-    data_cleaned = remove_outliers(data)
+    data_cleaned = remove_outliers(data, threshold=3)
     if len(data_cleaned) == 0:
         return np.zeros_like(data_cleaned)
+    # return data_cleaned
     min_val = np.min(data_cleaned)
     max_val = np.max(data_cleaned)
     if max_val == min_val:
-        return np.zeros_like(data)
-    return (data - min_val) / (max_val - min_val) * 100
+        return np.zeros_like(data_cleaned)
+    return (data_cleaned - min_val) / (max_val - min_val) * 100
 
 
 def split_countries(admin_data, mlea_data, output_dir):
@@ -139,8 +142,8 @@ if __name__ == "__main__":
     input_dir = "data"
     input_admin = "data/adm0_3857.fgb"
 
-    years = range(2012, 2020)
-    # years = [2019]
+    # years = range(2012, 2020)
+    years = [2019]
 
     for year in years:
         output_dir = f"output/{year}"
