@@ -2,3 +2,5 @@ rasterio
 fiona
 shapely
 numpy
+pandas
+scipy

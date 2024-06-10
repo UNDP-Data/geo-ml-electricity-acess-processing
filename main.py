@@ -7,18 +7,60 @@ import shutil
 import fiona
 from shapely.geometry import shape, box
 import numpy as np
+import pandas as pd
+
+def remove_outliers(data, threshold=3):
+    """
+    Remove outliers from a dataset using Z-score method.
+
+    The function calculates the Z-scores for each data point in the dataset.
+    Z-score is a measure of how many standard deviations a data point is from the mean.
+    Data points with a high Z-score (positive or negative) are considered outliers.
+
+    Z-score formula:
+        Z = (X - mean) / standard_deviation
+
+    Where:
+        Z - Z-score
+        X - Data point
+        mean - Mean of the dataset
+        standard_deviation - Standard deviation of the dataset
+
+    Parameters:
+    data (array-like): The input data from which to remove outliers.
+    threshold (float): The Z-score threshold to identify outliers. Default is 3.
+
+    Returns:
+    array-like: The data with outliers removed.
+    ”””
+    :param data:
+    :param threshold:
+    :return:
+    """
+    z_scores = np.abs((data - np.mean(data)) / np.std(data))
+    filtered = data.copy()
+    filtered[z_scores < threshold] = 0
+    return filtered
 
 
 def rescale(data):
-    min_val = np.min(data)
-    max_val = np.max(data)
-    return (data - min_val) / (max_val - min_val) * 100
+    data_cleaned = remove_outliers(data, threshold=2)
+    if len(data_cleaned) == 0:
+        return np.zeros_like(data_cleaned)
+    min_val = np.min(data_cleaned)
+    max_val = np.max(data_cleaned)
+    if max_val == min_val:
+        return np.zeros_like(data_cleaned)
+    rescaled = (data_cleaned - min_val) / (max_val - min_val) * 100
+    return rescaled
 
 
 def split_countries(admin_data, mlea_data, output_dir):
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
+
+    stats = {}
 
     with fiona.open(admin_data, "r") as adm0:
         with rasterio.open(mlea_data) as raster:
@@ -27,6 +69,7 @@ def split_countries(admin_data, mlea_data, output_dir):
 
             for feature in adm0:
                 country_iso3 = feature['properties']['GID_0']
+                country_name = feature['properties']['NAME_0']
                 geometry = feature['geometry']
                 shape_geometry = shape(geometry)
                 # buffered_geometry = shape_geometry.buffer(10)
@@ -40,6 +83,15 @@ def split_countries(admin_data, mlea_data, output_dir):
                 if np.all(out_image == nodata_value):
                     print(f'Skipping {country_iso3} as it is entirely No Data')
                     continue
+
+                country_stats = {
+                    'name': country_name,
+                    'min': np.nanmin(out_image),
+                    'max': np.nanmax(out_image),
+                    'mean': np.nanmean(out_image),
+                    'std': np.nanstd(out_image),
+                }
+                stats[country_iso3] = country_stats
 
                 out_image = rescale(out_image)
 
@@ -61,6 +113,11 @@ def split_countries(admin_data, mlea_data, output_dir):
                     dest.write(out_image)
 
                 print(f'Saved {output_path}')
+
+    # Print all statistics
+    stats_df = pd.DataFrame.from_dict(stats, orient='index')
+    stats_df = stats_df.sort_index()
+    print(stats_df.to_string())
 
 
 def merge_countries(input_dir, output_path, delete_country=False):
@@ -103,7 +160,7 @@ if __name__ == "__main__":
     input_admin = "data/adm0_3857.fgb"
 
     # years = range(2012, 2020)
-    years = [2018]
+    years = [2019]
 
     for year in years:
         output_dir = f"output/{year}"
@@ -117,5 +174,5 @@ if __name__ == "__main__":
         merge_countries(
             input_dir=output_dir,
             output_path=f"output/Electricity_access_{year}.tif",
-            delete_country=True
+            delete_country=False
         )
